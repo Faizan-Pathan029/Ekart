@@ -1,35 +1,28 @@
-pipeline {
+pipeline{
     agent any
     tools{
-        jdk  'jdk11'
-        maven  'maven3'
+       
+        maven 'maven3.9'
+    }
+
+     environment{
+        SCANNER_HOME= tool 'sonar-server' 
     }
     
-    environment{
-        SCANNER_HOME= tool 'sonar-scanner'
-    }
-    
-    stages {
-        stage('Git Checkout') {
-            steps {
-                git branch: 'main', changelog: false, credentialsId: '15fb69c3-3460-4d51-bd07-2b0545fa5151', poll: false, url: 'https://github.com/jaiswaladi246/Shopping-Cart.git'
+    stages{
+        stage('GitCheckout'){
+            steps{
+                git branch: 'main', url: 'https://github.com/jaiswaladi246/Ekart.git'
             }
         }
-        
-        stage('COMPILE') {
-            steps {
-                sh "mvn clean compile -DskipTests=true"
+
+        stage('Compile'){
+            steps{
+                   sh "mvn clean compile -DskipTests=true"
             }
         }
-        
-        stage('OWASP Scan') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DP'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        
-        stage('Sonarqube') {
+
+         stage('Sonarqube') {
             steps {
                 withSonarQubeEnv('sonar-server'){
                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Shopping-Cart \
@@ -38,26 +31,39 @@ pipeline {
                }
             }
         }
-        
-        stage('Build') {
+
+           stage('Build') {
             steps {
                 sh "mvn clean package -DskipTests=true"
             }
         }
-        
-        stage('Docker Build & Push') {
+
+          stage('Docker Build & Push') {
             steps {
-                script{
-                    withDockerRegistry(credentialsId: '2fe19d8a-3d12-4b82-ba20-9d22e6bf1672', toolName: 'docker') {
-                        
-                        sh "docker build -t shopping-cart -f docker/Dockerfile ."
-                        sh "docker tag  shopping-cart adijaiswal/shopping-cart:latest"
-                        sh "docker push adijaiswal/shopping-cart:latest"
+                script{ withDockerRegistry(credentialsId: '0454a329-3aef-46e5-95c9-fd05bbb38519', toolName: 'Docker') {
+                      sh "docker build -t shopping-cart -f docker/Dockerfile ."
+                        sh "docker tag  shopping-cart faizandocker29/faizan-labs:latest"
+                        sh "docker push faizandocker29/faizan-labs:latest"
                     }
+                }
+            }
+        }
+
+         stage('Deploy') {
+            steps {
+                script{ withDockerRegistry(credentialsId: '0454a329-3aef-46e5-95c9-fd05bbb38519', toolName: 'Docker')
+                {
+                    sh "docker run -d --name shop-shop -p 8070:8070  faizandocker29/faizan-labs:latest"
                 }
             }
         }
         
         
+         }
+         
+
+                
+
+         
     }
 }
